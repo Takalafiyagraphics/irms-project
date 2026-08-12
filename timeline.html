@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRMS - Incident Timeline</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-content">
+            <div class="content-area">
+                <div class="search-filters">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="searchInput" placeholder="Search incidents..." onkeyup="filterTimelines()">
+                    </div>
+                    <select class="filter-select" id="incidentSelect" onchange="showTimeline()">
+                        <option value="">Select an Incident</option>
+                    </select>
+                </div>
+
+                <div class="detail-card" id="timelineCard" style="display: none;">
+                    <div class="table-card-header" style="margin-bottom: 20px;">
+                        <h3 id="timelineTitle">📅 Incident Timeline</h3>
+                    </div>
+                    <div class="timeline" id="timelineContainer"></div>
+                </div>
+
+                <div class="empty-state" id="emptyState">
+                    <span class="empty-icon">📅</span>
+                    <h3>Select an Incident</h3>
+                    <p>Choose an incident from the dropdown to view its timeline.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        function loadTimelines() {
+            const incidents = DataStore.getIncidents();
+            const select = document.getElementById('incidentSelect');
+            incidents.forEach(inc => {
+                const opt = document.createElement('option');
+                opt.value = inc.id;
+                opt.textContent = inc.id + ' - ' + inc.title;
+                select.appendChild(opt);
+            });
+        }
+
+        function showTimeline() {
+            const incidentId = document.getElementById('incidentSelect').value;
+            if (!incidentId) {
+                document.getElementById('timelineCard').style.display = 'none';
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            const incident = DataStore.getIncident(incidentId);
+            if (!incident) return;
+
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('timelineCard').style.display = 'block';
+            document.getElementById('timelineTitle').textContent = '📅 ' + incident.id + ' - ' + incident.title;
+
+            const container = document.getElementById('timelineContainer');
+            container.innerHTML = incident.timeline.map((event, idx) => {
+                let dotColor = 'cyan';
+                if (event.type === 'detection') dotColor = 'red';
+                else if (event.type === 'alert') dotColor = 'orange';
+                else if (event.type === 'action') dotColor = 'yellow';
+                else if (event.type === 'resolve') dotColor = 'green';
+                else if (event.type === 'contain') dotColor = 'purple';
+                else if (event.type === 'eradicate') dotColor = 'green';
+                else if (event.type === 'recover') dotColor = 'cyan';
+
+                return '<div class="timeline-item">' +
+                    '<div class="timeline-dot ' + dotColor + '"></div>' +
+                    '<div class="timeline-time">' + event.time + '</div>' +
+                    '<div class="timeline-content">' +
+                        '<h4>' + event.event + '</h4>' +
+                        '<p>' + (event.type.charAt(0).toUpperCase() + event.type.slice(1)) + '</p>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
+        }
+
+        function filterTimelines() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const select = document.getElementById('incidentSelect');
+            const incidents = DataStore.getIncidents();
+
+            select.innerHTML = '<option value="">Select an Incident</option>';
+            incidents.filter(inc => 
+                !search || 
+                inc.id.toLowerCase().includes(search) ||
+                inc.title.toLowerCase().includes(search)
+            ).forEach(inc => {
+                const opt = document.createElement('option');
+                opt.value = inc.id;
+                opt.textContent = inc.id + ' - ' + inc.title;
+                select.appendChild(opt);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', loadTimelines);
+    </script>
+</body>
+</html>

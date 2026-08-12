@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRMS - Reports</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-content">
+            <div class="content-area">
+                <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="exportReportCSV()">📥 Export CSV</button>
+                    <button class="btn btn-secondary" onclick="window.print()">🖨️ Print Report</button>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="report-card">
+                        <h3>📊 Incident Statistics</h3>
+                        <div class="report-stat">
+                            <span class="report-stat-label">Total Incidents</span>
+                            <span class="report-stat-value" id="report-total">0</span>
+                        </div>
+                        <div class="report-stat">
+                            <span class="report-stat-label">Open Incidents</span>
+                            <span class="report-stat-value" id="report-open">0</span>
+                        </div>
+                        <div class="report-stat">
+                            <span class="report-stat-label">Investigating</span>
+                            <span class="report-stat-value" id="report-investigating">0</span>
+                        </div>
+                        <div class="report-stat">
+                            <span class="report-stat-label">Resolved</span>
+                            <span class="report-stat-value" id="report-resolved">0</span>
+                        </div>
+                        <div class="report-stat">
+                            <span class="report-stat-label">Unresolved</span>
+                            <span class="report-stat-value" id="report-unresolved">0</span>
+                        </div>
+                        <div class="report-stat">
+                            <span class="report-stat-label">Average Response Time</span>
+                            <span class="report-stat-value" id="report-avg-time">2h 15m</span>
+                        </div>
+                        <div class="report-stat">
+                            <span class="report-stat-label">Average Resolution Time</span>
+                            <span class="report-stat-value" id="report-avg-res">18h 30m</span>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Incidents by Severity</h3>
+                        <div class="chart-container">
+                            <canvas id="reportSeverityChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Incidents by Type</h3>
+                        <div class="chart-container">
+                            <canvas id="reportTypeChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Incidents by Status</h3>
+                        <div class="chart-container">
+                            <canvas id="reportStatusChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        function loadReports() {
+            const incidents = DataStore.getIncidents();
+            const stats = getStats();
+
+            document.getElementById('report-total').textContent = stats.total;
+            document.getElementById('report-open').textContent = stats.open;
+            document.getElementById('report-investigating').textContent = stats.investigating;
+            document.getElementById('report-resolved').textContent = stats.resolved;
+            document.getElementById('report-unresolved').textContent = stats.open + stats.investigating + stats.contained;
+
+            // Severity Chart
+            const sevCounts = { 'Critical': 0, 'High': 0, 'Medium': 0, 'Low': 0 };
+            incidents.forEach(i => sevCounts[i.severity] = (sevCounts[i.severity] || 0) + 1);
+            Charts.drawBarChart('reportSeverityChart', ['Critical', 'High', 'Medium', 'Low'],
+                [sevCounts['Critical'], sevCounts['High'], sevCounts['Medium'], sevCounts['Low']],
+                ['#ef4444', '#f97316', '#eab308', '#10b981']);
+
+            // Type Chart
+            const typeCounts = {};
+            incidents.forEach(i => typeCounts[i.type] = (typeCounts[i.type] || 0) + 1);
+            const types = Object.keys(typeCounts);
+            const typeValues = Object.values(typeCounts);
+            const typeColors = ['#06b6d4', '#8b5cf6', '#f97316', '#10b981', '#ef4444', '#eab308', '#ec4899', '#6366f1'];
+            Charts.drawDoughnutChart('reportTypeChart', types, typeValues, typeColors.slice(0, types.length));
+
+            // Status Chart
+            const statusCounts = {};
+            incidents.forEach(i => statusCounts[i.status] = (statusCounts[i.status] || 0) + 1);
+            const statuses = Object.keys(statusCounts);
+            const statusValues = Object.values(statusCounts);
+            const statusColors = ['#ef4444', '#f97316', '#eab308', '#8b5cf6', '#06b6d4', '#10b981', '#64748b'];
+            Charts.drawBarChart('reportStatusChart', statuses, statusValues, statusColors.slice(0, statuses.length));
+        }
+
+        function exportReportCSV() {
+            const incidents = DataStore.getIncidents();
+            const exportData = incidents.map(i => ({
+                ID: i.id,
+                Title: i.title,
+                Type: i.type,
+                Severity: i.severity,
+                Status: i.status,
+                AffectedSystem: i.affectedSystem,
+                Department: i.affectedDepartment,
+                AssignedAnalyst: i.assignedAnalyst,
+                DateDetected: i.dateDetected,
+                Description: i.description
+            }));
+            exportToCSV(exportData, 'IRMS_Incident_Report.csv');
+        }
+
+        document.addEventListener('DOMContentLoaded', loadReports);
+        window.addEventListener('resize', loadReports);
+    </script>
+</body>
+</html>

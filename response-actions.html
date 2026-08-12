@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRMS - Response Actions</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-content">
+            <div class="content-area">
+                <div class="search-filters">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="searchInput" placeholder="Search response actions..." onkeyup="filterActions()">
+                    </div>
+                    <select class="filter-select" id="statusFilter" onchange="filterActions()">
+                        <option value="">All Statuses</option>
+                        <option value="Completed">Completed</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Pending">Pending</option>
+                    </select>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h3>⚡ Response Actions Log</h3>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Incident ID</th>
+                                    <th>Action</th>
+                                    <th>Performed By</th>
+                                    <th>Date/Time</th>
+                                    <th>Description</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="actionsTable"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        function loadActions() {
+            filterActions();
+        }
+
+        function filterActions() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const status = document.getElementById('statusFilter').value;
+
+            const incidents = DataStore.getIncidents();
+            let allActions = [];
+            incidents.forEach(inc => {
+                inc.responseActions.forEach(action => {
+                    allActions.push({ ...action, incidentId: inc.id, incidentTitle: inc.title });
+                });
+            });
+
+            allActions = allActions.filter(a => {
+                const matchesSearch = !search || 
+                    a.incidentId.toLowerCase().includes(search) ||
+                    a.action.toLowerCase().includes(search) ||
+                    a.performedBy.toLowerCase().includes(search);
+                const matchesStatus = !status || a.status === status;
+                return matchesSearch && matchesStatus;
+            });
+
+            const tbody = document.getElementById('actionsTable');
+            if (allActions.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7"><div class="empty-state"><span class="empty-icon">⚡</span><h3>No response actions found</h3></div></td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = allActions.map(a => `
+                <tr>
+                    <td><strong>${a.incidentId}</strong></td>
+                    <td>${a.action}</td>
+                    <td>${a.performedBy}</td>
+                    <td>${a.dateTime}</td>
+                    <td style="max-width: 250px;">${a.description}</td>
+                    <td><span class="badge ${a.status === 'Completed' ? 'badge-status-resolved' : a.status === 'In Progress' ? 'badge-status-investigating' : 'badge-status-open'}">${a.status}</span></td>
+                    <td><a href="incident-detail.html?id=${a.incidentId}" class="btn btn-sm btn-secondary">View</a></td>
+                </tr>
+            `).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', loadActions);
+    </script>
+</body>
+</html>
