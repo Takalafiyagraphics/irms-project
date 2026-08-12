@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRMS - Incidents</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-content">
+            <div class="content-area">
+                <div class="search-filters">
+                    <div class="search-box">
+                        <span class="search-icon">🔍</span>
+                        <input type="text" id="searchInput" placeholder="Search incidents by ID, title, or system..." onkeyup="filterIncidents()">
+                    </div>
+                    <select class="filter-select" id="severityFilter" onchange="filterIncidents()">
+                        <option value="">All Severities</option>
+                        <option value="Critical">Critical</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                    <select class="filter-select" id="statusFilter" onchange="filterIncidents()">
+                        <option value="">All Statuses</option>
+                        <option value="Open">Open</option>
+                        <option value="Investigating">Investigating</option>
+                        <option value="Contained">Contained</option>
+                        <option value="Eradicated">Eradicated</option>
+                        <option value="Recovering">Recovering</option>
+                        <option value="Resolved">Resolved</option>
+                        <option value="Closed">Closed</option>
+                    </select>
+                    <select class="filter-select" id="typeFilter" onchange="filterIncidents()">
+                        <option value="">All Types</option>
+                        <option value="Malware">Malware</option>
+                        <option value="Phishing">Phishing</option>
+                        <option value="Unauthorized Access">Unauthorized Access</option>
+                        <option value="Data Breach">Data Breach</option>
+                        <option value="Ransomware">Ransomware</option>
+                        <option value="Network Attack">Network Attack</option>
+                        <option value="Insider Threat">Insider Threat</option>
+                        <option value="Denial of Service">Denial of Service</option>
+                        <option value="Suspicious Activity">Suspicious Activity</option>
+                        <option value="Other">Other</option>
+                    </select>
+                    <select class="filter-select" id="sortFilter" onchange="filterIncidents()">
+                        <option value="date-desc">Date: Newest First</option>
+                        <option value="date-asc">Date: Oldest First</option>
+                        <option value="severity">Severity</option>
+                        <option value="status">Status</option>
+                    </select>
+                    <a href="report-incident.html" class="btn btn-primary btn-sm">➕ Report New</a>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h3>All Incidents</h3>
+                        <span id="incidentCount" style="color: var(--text-muted); font-size: 13px;">0 incidents found</span>
+                    </div>
+                    <div style="overflow-x: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Title</th>
+                                    <th>Type</th>
+                                    <th>Severity</th>
+                                    <th>Status</th>
+                                    <th>Affected System</th>
+                                    <th>Assigned Analyst</th>
+                                    <th>Date Detected</th>
+                                    <th>Last Updated</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="incidentsTable"></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination" id="pagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Confirm Delete</h3>
+                <button class="modal-close" onclick="closeDeleteModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary);">Are you sure you want to delete incident <strong id="deleteIncidentId" style="color: var(--accent-red);"></strong>? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Modal -->
+    <div class="modal-overlay" id="assignModal">
+        <div class="modal" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Assign Analyst</h3>
+                <button class="modal-close" onclick="closeAssignModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Select Analyst</label>
+                    <select class="form-input" id="assignAnalystSelect">
+                        <option value="">-- Select Analyst --</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeAssignModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="confirmAssign()">Assign</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let filteredIncidents = [];
+        let incidentToDelete = null;
+        let incidentToAssign = null;
+
+        function loadIncidents() {
+            filteredIncidents = DataStore.getIncidents();
+            filterIncidents();
+        }
+
+        function filterIncidents() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const severity = document.getElementById('severityFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const type = document.getElementById('typeFilter').value;
+            const sort = document.getElementById('sortFilter').value;
+
+            filteredIncidents = DataStore.getIncidents().filter(inc => {
+                const matchesSearch = !search || 
+                    inc.id.toLowerCase().includes(search) ||
+                    inc.title.toLowerCase().includes(search) ||
+                    inc.affectedSystem.toLowerCase().includes(search) ||
+                    inc.assignedAnalyst.toLowerCase().includes(search);
+                const matchesSeverity = !severity || inc.severity === severity;
+                const matchesStatus = !status || inc.status === status;
+                const matchesType = !type || inc.type === type;
+                return matchesSearch && matchesSeverity && matchesStatus && matchesType;
+            });
+
+            // Sort
+            if (sort === 'date-desc') filteredIncidents.sort((a, b) => new Date(b.dateDetected) - new Date(a.dateDetected));
+            else if (sort === 'date-asc') filteredIncidents.sort((a, b) => new Date(a.dateDetected) - new Date(b.dateDetected));
+            else if (sort === 'severity') {
+                const sevOrder = { 'Critical': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
+                filteredIncidents.sort((a, b) => sevOrder[b.severity] - sevOrder[a.severity]);
+            }
+            else if (sort === 'status') filteredIncidents.sort((a, b) => a.status.localeCompare(b.status));
+
+            renderTable();
+            renderPagination();
+            document.getElementById('incidentCount').textContent = `${filteredIncidents.length} incident${filteredIncidents.length !== 1 ? 's' : ''} found`;
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('incidentsTable');
+            const start = (currentPage - 1) * itemsPerPage;
+            const pageItems = filteredIncidents.slice(start, start + itemsPerPage);
+
+            if (pageItems.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><span class="empty-icon">📭</span><h3>No incidents found</h3><p>Try adjusting your filters or report a new incident.</p></div></td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = pageItems.map(inc => `
+                <tr>
+                    <td><strong>${inc.id}</strong></td>
+                    <td>${inc.title}</td>
+                    <td>${inc.type}</td>
+                    <td><span class="badge ${UI.getSeverityClass(inc.severity)}">${inc.severity}</span></td>
+                    <td><span class="badge ${UI.getStatusClass(inc.status)}">${inc.status}</span></td>
+                    <td>${inc.affectedSystem}</td>
+                    <td>${inc.assignedAnalyst}</td>
+                    <td>${inc.dateDetected}</td>
+                    <td>${inc.lastUpdated || inc.dateDetected}</td>
+                    <td>
+                        <div class="action-btns">
+                            <a href="incident-detail.html?id=${inc.id}" class="action-btn view" title="View">👁</a>
+                            <a href="incident-detail.html?id=${inc.id}&edit=1" class="action-btn edit" title="Edit">✏️</a>
+                            <button class="action-btn assign" title="Assign" onclick="openAssignModal('${inc.id}')">👤</button>
+                            <button class="action-btn delete" title="Delete" onclick="openDeleteModal('${inc.id}')">🗑</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderPagination() {
+            const totalPages = Math.ceil(filteredIncidents.length / itemsPerPage);
+            const pagination = document.getElementById('pagination');
+            if (totalPages <= 1) { pagination.innerHTML = ''; return; }
+
+            let html = `<button class="pagination-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>← Prev</button>`;
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<button class="pagination-btn ${i === currentPage ? 'active' : ''}" onclick="changePage(${i})">${i}</button>`;
+            }
+            html += `<button class="pagination-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>`;
+            pagination.innerHTML = html;
+        }
+
+        function changePage(page) {
+            const totalPages = Math.ceil(filteredIncidents.length / itemsPerPage);
+            if (page < 1 || page > totalPages) return;
+            currentPage = page;
+            renderTable();
+            renderPagination();
+        }
+
+        function openDeleteModal(id) {
+            incidentToDelete = id;
+            document.getElementById('deleteIncidentId').textContent = id;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            incidentToDelete = null;
+        }
+
+        function confirmDelete() {
+            if (incidentToDelete) {
+                DataStore.deleteIncident(incidentToDelete);
+                UI.toast(`Incident ${incidentToDelete} deleted successfully`, 'success');
+                closeDeleteModal();
+                loadIncidents();
+            }
+        }
+
+        function openAssignModal(id) {
+            incidentToAssign = id;
+            const team = DataStore.getTeam();
+            const select = document.getElementById('assignAnalystSelect');
+            select.innerHTML = '<option value="">-- Select Analyst --</option>' + 
+                team.map(t => `<option value="${t.name}">${t.name} (${t.role})</option>`).join('');
+            document.getElementById('assignModal').classList.add('active');
+        }
+
+        function closeAssignModal() {
+            document.getElementById('assignModal').classList.remove('active');
+            incidentToAssign = null;
+        }
+
+        function confirmAssign() {
+            const analyst = document.getElementById('assignAnalystSelect').value;
+            if (analyst && incidentToAssign) {
+                DataStore.updateIncident(incidentToAssign, { assignedAnalyst: analyst });
+                UI.toast(`Analyst ${analyst} assigned to ${incidentToAssign}`, 'success');
+                closeAssignModal();
+                loadIncidents();
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadIncidents);
+    </script>
+</body>
+</html>

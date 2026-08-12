@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRMS - Dashboard</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-content">
+            <div class="content-area">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon blue">📊</div>
+                        <div class="stat-info">
+                            <h3 id="stat-total">0</h3>
+                            <p>Total Incidents</p>
+                            <span class="stat-change positive">+12% vs last week</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red">🔴</div>
+                        <div class="stat-info">
+                            <h3 id="stat-open">0</h3>
+                            <p>Open Incidents</p>
+                            <span class="stat-change negative">Requires attention</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon orange">🔍</div>
+                        <div class="stat-info">
+                            <h3 id="stat-investigating">0</h3>
+                            <p>Investigating</p>
+                            <span class="stat-change positive">Active cases</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon red">⚠️</div>
+                        <div class="stat-info">
+                            <h3 id="stat-critical">0</h3>
+                            <p>Critical Incidents</p>
+                            <span class="stat-change negative">Immediate action</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon green">✅</div>
+                        <div class="stat-info">
+                            <h3 id="stat-resolved">0</h3>
+                            <p>Resolved</p>
+                            <span class="stat-change positive">Good progress</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon purple">⏱️</div>
+                        <div class="stat-info">
+                            <h3 id="stat-avg-time">0h</h3>
+                            <p>Avg Response Time</p>
+                            <span class="stat-change positive">-15% improvement</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Incidents by Severity</h3>
+                        <div class="chart-container">
+                            <canvas id="severityChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Incidents by Type</h3>
+                        <div class="chart-container">
+                            <canvas id="typeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Incident Status Distribution</h3>
+                        <div class="chart-container">
+                            <canvas id="statusChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Incidents Over Time</h3>
+                        <div class="chart-container">
+                            <canvas id="timeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Incidents Table -->
+                <div class="table-card">
+                    <div class="table-card-header">
+                        <h3>Recent Incidents</h3>
+                        <a href="incidents.html" class="btn btn-sm btn-secondary">View All</a>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Title</th>
+                                <th>Type</th>
+                                <th>Severity</th>
+                                <th>Status</th>
+                                <th>Assigned</th>
+                                <th>Date</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentIncidentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        function loadDashboard() {
+            updateStatsDisplay();
+
+            const incidents = DataStore.getIncidents();
+
+            // Severity Chart
+            const severityCounts = { 'Critical': 0, 'High': 0, 'Medium': 0, 'Low': 0 };
+            incidents.forEach(i => severityCounts[i.severity] = (severityCounts[i.severity] || 0) + 1);
+            Charts.drawBarChart('severityChart', ['Critical', 'High', 'Medium', 'Low'], 
+                [severityCounts['Critical'], severityCounts['High'], severityCounts['Medium'], severityCounts['Low']],
+                ['#ef4444', '#f97316', '#eab308', '#10b981']);
+
+            // Type Chart
+            const typeCounts = {};
+            incidents.forEach(i => typeCounts[i.type] = (typeCounts[i.type] || 0) + 1);
+            const types = Object.keys(typeCounts);
+            const typeValues = Object.values(typeCounts);
+            const typeColors = ['#06b6d4', '#8b5cf6', '#f97316', '#10b981', '#ef4444', '#eab308'];
+            Charts.drawDoughnutChart('typeChart', types, typeValues, typeColors.slice(0, types.length));
+
+            // Status Chart
+            const statusCounts = { 'Open': 0, 'Investigating': 0, 'Contained': 0, 'Eradicated': 0, 'Recovering': 0, 'Resolved': 0, 'Closed': 0 };
+            incidents.forEach(i => statusCounts[i.status] = (statusCounts[i.status] || 0) + 1);
+            const statuses = Object.keys(statusCounts).filter(s => statusCounts[s] > 0);
+            const statusValues = statuses.map(s => statusCounts[s]);
+            const statusColors = ['#ef4444', '#f97316', '#eab308', '#8b5cf6', '#06b6d4', '#10b981', '#64748b'];
+            Charts.drawBarChart('statusChart', statuses, statusValues, statusColors.slice(0, statuses.length));
+
+            // Time Chart
+            const dates = ['Aug 05', 'Aug 06', 'Aug 07', 'Aug 08', 'Aug 09', 'Aug 10', 'Aug 11', 'Aug 12'];
+            const dailyCounts = dates.map(() => 0);
+            incidents.forEach(i => {
+                const day = i.dateDetected.slice(5).replace('-', ' ');
+                const idx = dates.findIndex(d => d.includes(day.split(' ')[1]));
+                if (idx !== -1) dailyCounts[idx]++;
+            });
+            Charts.drawLineChart('timeChart', dates, dailyCounts, '#06b6d4');
+
+            // Recent Incidents Table
+            const tbody = document.getElementById('recentIncidentsTable');
+            const recent = incidents.slice(0, 8);
+            tbody.innerHTML = recent.map(inc => `
+                <tr>
+                    <td><strong>${inc.id}</strong></td>
+                    <td>${inc.title}</td>
+                    <td>${inc.type}</td>
+                    <td><span class="badge ${UI.getSeverityClass(inc.severity)}">${inc.severity}</span></td>
+                    <td><span class="badge ${UI.getStatusClass(inc.status)}">${inc.status}</span></td>
+                    <td>${inc.assignedAnalyst}</td>
+                    <td>${inc.dateDetected}</td>
+                    <td><a href="incident-detail.html?id=${inc.id}" class="btn btn-sm btn-secondary">View</a></td>
+                </tr>
+            `).join('');
+        }
+
+        document.addEventListener('DOMContentLoaded', loadDashboard);
+        window.addEventListener('resize', loadDashboard);
+    </script>
+</body>
+</html>

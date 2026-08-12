@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRMS - Report Incident</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="main-content">
+            <div class="content-area">
+                <div class="detail-card">
+                    <div class="table-card-header" style="border-bottom: 1px solid var(--border-color); margin-bottom: 20px;">
+                        <h3>📝 Report New Incident</h3>
+                    </div>
+                    <form id="reportForm">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Incident Title *</label>
+                                <input type="text" id="title" required placeholder="e.g., Malware detected on workstation">
+                            </div>
+                            <div class="form-group">
+                                <label>Incident Type *</label>
+                                <select id="type" required>
+                                    <option value="">Select Type</option>
+                                    <option value="Malware">Malware</option>
+                                    <option value="Phishing">Phishing</option>
+                                    <option value="Unauthorized Access">Unauthorized Access</option>
+                                    <option value="Data Breach">Data Breach</option>
+                                    <option value="Ransomware">Ransomware</option>
+                                    <option value="Network Attack">Network Attack</option>
+                                    <option value="Insider Threat">Insider Threat</option>
+                                    <option value="Denial of Service">Denial of Service</option>
+                                    <option value="Suspicious Activity">Suspicious Activity</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Severity *</label>
+                                <select id="severity" required>
+                                    <option value="">Select Severity</option>
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">Critical</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Status *</label>
+                                <select id="status" required>
+                                    <option value="Open">Open</option>
+                                    <option value="Investigating">Investigating</option>
+                                    <option value="Contained">Contained</option>
+                                    <option value="Eradicated">Eradicated</option>
+                                    <option value="Recovering">Recovering</option>
+                                    <option value="Resolved">Resolved</option>
+                                    <option value="Closed">Closed</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Date Detected *</label>
+                                <input type="date" id="dateDetected" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Time Detected *</label>
+                                <input type="time" id="timeDetected" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Affected System *</label>
+                                <input type="text" id="affectedSystem" required placeholder="e.g., Server-01, Workstation-42">
+                            </div>
+                            <div class="form-group">
+                                <label>Affected Department</label>
+                                <input type="text" id="affectedDepartment" placeholder="e.g., Finance, IT Operations">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Source of Detection</label>
+                                <input type="text" id="sourceOfDetection" placeholder="e.g., SIEM, Antivirus, User Report">
+                            </div>
+                            <div class="form-group">
+                                <label>Assigned Analyst</label>
+                                <select id="assignedAnalyst">
+                                    <option value="Unassigned">Unassigned</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Reporter Name *</label>
+                                <input type="text" id="reporterName" required placeholder="Your name">
+                            </div>
+                            <div class="form-group">
+                                <label>Reporter Email *</label>
+                                <input type="email" id="reporterEmail" required placeholder="your.email@company.com">
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-bottom: 20px;">
+                            <label>Description *</label>
+                            <textarea id="description" required placeholder="Provide a detailed description of the incident..."></textarea>
+                        </div>
+                        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                            <a href="dashboard.html" class="btn btn-secondary">Cancel</a>
+                            <button type="submit" class="btn btn-primary">🚀 Submit Incident</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+    <script>
+        // Populate analyst dropdown
+        const team = DataStore.getTeam();
+        const analystSelect = document.getElementById('assignedAnalyst');
+        team.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.name;
+            opt.textContent = `${t.name} (${t.role})`;
+            analystSelect.appendChild(opt);
+        });
+
+        // Set default date to today
+        document.getElementById('dateDetected').value = new Date().toISOString().split('T')[0];
+        document.getElementById('timeDetected').value = new Date().toTimeString().slice(0, 5);
+
+        document.getElementById('reportForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const incident = {
+                id: UI.generateIncidentId(),
+                title: document.getElementById('title').value,
+                type: document.getElementById('type').value,
+                severity: document.getElementById('severity').value,
+                status: document.getElementById('status').value,
+                dateDetected: document.getElementById('dateDetected').value,
+                timeDetected: document.getElementById('timeDetected').value,
+                affectedSystem: document.getElementById('affectedSystem').value,
+                affectedDepartment: document.getElementById('affectedDepartment').value || 'N/A',
+                sourceOfDetection: document.getElementById('sourceOfDetection').value || 'Manual Report',
+                reporterName: document.getElementById('reporterName').value,
+                reporterEmail: document.getElementById('reporterEmail').value,
+                assignedAnalyst: document.getElementById('assignedAnalyst').value,
+                description: document.getElementById('description').value,
+                lastUpdated: new Date().toISOString().slice(0, 16).replace('T', ' '),
+                investigation: { summary: '', findings: '', iocs: '', suspiciousIPs: '', suspiciousDomains: '', fileHashes: '', affectedDevices: '', notes: '' },
+                responseActions: [],
+                timeline: [
+                    { time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }), event: 'Incident reported and created', type: 'report' }
+                ],
+                workflowStage: 0
+            };
+
+            DataStore.addIncident(incident);
+
+            // Add notification
+            DataStore.addNotification({
+                id: Date.now(),
+                title: 'New Incident',
+                message: `${incident.id} - ${incident.title} has been reported.`,
+                type: incident.severity === 'Critical' ? 'critical' : 'info',
+                time: 'Just now',
+                read: false
+            });
+
+            UI.toast(`Incident ${incident.id} created successfully!`, 'success');
+            setTimeout(() => window.location.href = 'incidents.html', 1500);
+        });
+    </script>
+</body>
+</html>
